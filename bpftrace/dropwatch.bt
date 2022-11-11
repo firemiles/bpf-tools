@@ -1,0 +1,18 @@
+#!/usr/bin/env bpftrace
+
+#include <linux/skbuff.h>
+#include <linux/ip.h>
+
+
+tracepoint:skb:kfree_skb
+{
+    // Firt arg is sk_buff.
+  $skb = (struct sk_buff *)args->skbaddr;
+  if (args->protocol == 0x800) {  // Get network header, src IP and dst IP.
+    $iph = (struct iphdr *)($skb->head + $skb->network_header);
+    $sip = ntop(AF_INET, $iph->saddr);
+    $dip = ntop(AF_INET, $iph->daddr);
+    printf("SKB dropped on process %s (PID: %d): proto: 0x%x, %s->%s kstack: %s\n", comm, pid, $iph->protocol, $sip, $dip, kstack);
+  }
+}
+
